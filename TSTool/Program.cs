@@ -11,7 +11,8 @@ namespace TSTool
     [Subcommand(
         typeof(GetGracePeriodRawCommand),
         typeof(GetGracePeriodCommand),
-        typeof(SetGracePeriodCommand)
+        typeof(SetGracePeriodCommand),
+        typeof(RestartServicesCommand)
         )]
     class TsToolMain : TsToolCommandBase
     {
@@ -86,8 +87,11 @@ namespace TSTool
     {
         private TsToolMain Parent { get; set; }
 
-        [Option("--days", "How many days after today shall the evaluation license expire", CommandOptionType.SingleValue)]
+        [Option("--days|-d", "How many days after today shall the evaluation license expire", CommandOptionType.SingleValue)]
         public long? Days { get; set; }
+
+        [Option("--restart-services|-r", "Restart remote desktop services afterwards", CommandOptionType.NoValue)]
+        public bool RestartServices { get; set; }
 
         protected override int OnExecute(CommandLineApplication app)
         {
@@ -121,6 +125,11 @@ namespace TSTool
                 Console.WriteLine($"Failed to reset ACL: {ex.Message}");
                 return -1;
             }
+
+            if (RestartServices)
+            {
+                TerminalService.RestartServices();
+            }
             return 0;
         }
 
@@ -128,6 +137,35 @@ namespace TSTool
         {
             var args = Parent.CreateArgs();
             args.Add("GetGracePeriod");
+            return args;
+        }
+    }
+
+    [Command(Description = "Restart remote desktop services")]
+    class RestartServicesCommand : TsToolCommandBase
+    {
+        private TsToolMain Parent { get; set; }
+
+        [Option("--days", "How many days after today shall the evaluation license expire", CommandOptionType.SingleValue)]
+        public long? Days { get; set; }
+
+        protected override int OnExecute(CommandLineApplication app)
+        {
+            try
+            {
+                TerminalService.RestartServices();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to restart services: {ex.Message}");
+            }
+            return 0;
+        }
+
+        public override List<string> CreateArgs()
+        {
+            var args = Parent.CreateArgs();
+            args.Add("RestartServices");
             return args;
         }
     }

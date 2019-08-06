@@ -159,5 +159,11 @@ namespace TSTool
             var endDateFileTime = endDate.ToFileTimeUtc();
             SetGracePeriodVal(BitConverter.GetBytes(endDateFileTime));
         }
+
+        public static void RestartServices()
+        {
+            Utils.RestartWindowsService("SessionEnv");
+            Utils.RestartWindowsService("TermService");
+        }
     }
 }
