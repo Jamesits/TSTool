@@ -16,3 +16,5 @@ Tested versions:
 
 This tool is inspired by [Reset-TSGracePeriod.ps1
 ](https://gallery.technet.microsoft.com/scriptcenter/Reset-Terminal-Server-RDS-44922d91).
+
+ProcessPrivileges is from [CodePlex Archive](https://archive.codeplex.com/?p=processprivileges).
