@@ -5,8 +5,6 @@ using System.Management;
 using System.Security.AccessControl;
 using Microsoft.Win32;
 using System.Security.Cryptography;
-using System.Security.Principal;
-using System.DirectoryServices.AccountManagement;
 using ProcessPrivileges;
 
 namespace TSTool
@@ -101,6 +99,9 @@ namespace TSTool
             Registry.SetValue("HKEY_LOCAL_MACHINE\\" + TimeBombRegistryKeyName, TimeBombRegistryValueName, p);
         }
 
+        /// <summary>
+        /// Delete the registry key so we can start over from 120 days
+        /// </summary>
         public static void ResetGracePeriodVal()
         {
             using (RegistryKey key = Registry.LocalMachine.OpenSubKey(TimeBombRegistryKeyName, true))
@@ -116,8 +117,6 @@ namespace TSTool
             }
         }
 
-        private static readonly string user = Environment.UserDomainName + "\\" + Environment.UserName;
-
         private static readonly RegistryAccessRule AdminWritableRegistryAccessRule = new RegistryAccessRule(
             // new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null), 
             "Administrators", 
@@ -127,7 +126,6 @@ namespace TSTool
             AccessControlType.Allow);
 
         private static RegistrySecurity previousACL;
-        // private static IdentityReference previousOwner;
 
         /// <summary>
         /// Bypass ACL by allowing Administrator to write to the key
@@ -141,7 +139,6 @@ namespace TSTool
 
                 var key = Registry.LocalMachine.OpenSubKey(TimeBombRegistryKeyName, false);
                 previousACL = key.GetAccessControl();
-                // previousOwner = previousACL.GetOwner(typeof(System.Security.Principal.SecurityIdentifier));
                 key.Close();
                 key = Registry.LocalMachine.OpenSubKey(TimeBombRegistryKeyName, RegistryKeyPermissionCheck.ReadWriteSubTree, RegistryRights.TakeOwnership);
                 var rs = key.GetAccessControl();
