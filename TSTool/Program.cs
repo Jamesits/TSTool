@@ -12,7 +12,8 @@ namespace TSTool
         typeof(GetGracePeriodRawCommand),
         typeof(GetGracePeriodCommand),
         typeof(SetGracePeriodCommand),
-        typeof(RestartServicesCommand)
+        typeof(RestartServicesCommand),
+        typeof(ResetGracePeriodCommand)
         )]
     class TsToolMain : TsToolCommandBase
     {
@@ -110,6 +111,61 @@ namespace TSTool
             {
                 TerminalService.SetGracePeriodVal((long) Days);
                 Console.WriteLine($"Successfully set grace period to {Days} days later");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                return -1;
+            }
+            try
+            {
+                TerminalService.ResetGracePeriodRegistryKeyPermission();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to reset ACL: {ex.Message}");
+                return -1;
+            }
+
+            if (RestartServices)
+            {
+                TerminalService.RestartServices();
+            }
+            return 0;
+        }
+
+        public override List<string> CreateArgs()
+        {
+            var args = Parent.CreateArgs();
+            args.Add("GetGracePeriod");
+            return args;
+        }
+    }
+
+    [Command(Description = "Reset the grace period information and start over")]
+    class ResetGracePeriodCommand : TsToolCommandBase
+    {
+        private TsToolMain Parent { get; set; }
+
+        [Option("--restart-services|-r", "Restart remote desktop services afterwards", CommandOptionType.NoValue)]
+        public bool RestartServices { get; set; }
+
+        protected override int OnExecute(CommandLineApplication app)
+        {
+            try
+            {
+                TerminalService.SetGracePeriodRegistryKeyPermission();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to set ACL: {ex.Message}");
+                Console.WriteLine("Please run again as Administrator.");
+                return -1;
+            }
+            try
+            {
+                TerminalService.ResetGracePeriodVal();
+                Console.WriteLine($"Successfully reset grace period");
             }
             catch (Exception ex)
             {

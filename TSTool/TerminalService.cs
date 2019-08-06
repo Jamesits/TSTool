@@ -101,6 +101,21 @@ namespace TSTool
             Registry.SetValue("HKEY_LOCAL_MACHINE\\" + TimeBombRegistryKeyName, TimeBombRegistryValueName, p);
         }
 
+        public static void ResetGracePeriodVal()
+        {
+            using (RegistryKey key = Registry.LocalMachine.OpenSubKey(TimeBombRegistryKeyName, true))
+            {
+                if (key == null)
+                {
+                    Console.WriteLine("The registry key doesn't exist yet");
+                }
+                else
+                {
+                    key.DeleteValue(TimeBombRegistryValueName);
+                }
+            }
+        }
+
         private static readonly string user = Environment.UserDomainName + "\\" + Environment.UserName;
 
         private static readonly RegistryAccessRule AdminWritableRegistryAccessRule = new RegistryAccessRule(
