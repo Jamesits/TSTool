@@ -168,7 +168,7 @@ namespace TSTool
         public static void SetGracePeriodVal(long days)
         {
             var endDate = DateTime.Now.AddDays(days);
-            var endDateFileTime = endDate.ToFileTimeUtc();
+            var endDateFileTime = endDate.ToFileTime();
             SetGracePeriodVal(BitConverter.GetBytes(endDateFileTime));
         }
 
