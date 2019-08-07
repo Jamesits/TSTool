@@ -5,6 +5,7 @@ using System.Management;
 using System.Security.AccessControl;
 using Microsoft.Win32;
 using System.Security.Cryptography;
+using System.Security.Principal;
 using ProcessPrivileges;
 
 namespace TSTool
@@ -118,30 +119,51 @@ namespace TSTool
         }
 
         private static readonly RegistryAccessRule AdminWritableRegistryAccessRule = new RegistryAccessRule(
-            // new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null), 
-            "Administrators", 
+            new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null), 
+            //Environment.UserDomainName + "\\" + Environment.UserName,
+            // "Administrators",
             RegistryRights.FullControl,
             InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit,
             PropagationFlags.None,
             AccessControlType.Allow);
 
-        private static RegistrySecurity previousACL;
+        private static readonly RegistryAccessRule NwSvcWritableRegistryAccessRule = new RegistryAccessRule(
+            new SecurityIdentifier(WellKnownSidType.NetworkServiceSid, null),
+            RegistryRights.FullControl,
+            InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit,
+            PropagationFlags.None,
+            AccessControlType.Allow);
+
+        private static readonly RegistryAccessRule NwSvcReadonlyRegistryAccessRule = new RegistryAccessRule(
+            new SecurityIdentifier(WellKnownSidType.NetworkServiceSid, null),
+            RegistryRights.ReadKey | RegistryRights.ReadPermissions | RegistryRights.EnumerateSubKeys | RegistryRights.QueryValues | RegistryRights.Notify,
+            InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit,
+            PropagationFlags.None,
+            AccessControlType.Allow);
 
         /// <summary>
         /// Bypass ACL by allowing Administrator to write to the key
         /// </summary>
         public static void SetGracePeriodRegistryKeyPermission()
         {
-            Process process = Process.GetCurrentProcess();
-            using (new PrivilegeEnabler(process, Privilege.TakeOwnership))
-            {
-                Debug.WriteLine("{0} => {1}", Privilege.TakeOwnership, process.GetPrivilegeState(Privilege.TakeOwnership));
+            RegistryKey key;
+            RegistrySecurity rs;
 
-                var key = Registry.LocalMachine.OpenSubKey(TimeBombRegistryKeyName, false);
-                previousACL = key.GetAccessControl();
-                key.Close();
+            Process process = Process.GetCurrentProcess();
+            using (new PrivilegeEnabler(process, new[]{ Privilege.TakeOwnership}))
+            {
+                Console.WriteLine("{0} => {1}", Privilege.TakeOwnership, process.GetPrivilegeState(Privilege.TakeOwnership));
+
+                // first set owner to our own account
                 key = Registry.LocalMachine.OpenSubKey(TimeBombRegistryKeyName, RegistryKeyPermissionCheck.ReadWriteSubTree, RegistryRights.TakeOwnership);
-                var rs = key.GetAccessControl();
+                rs = key.GetAccessControl();
+                rs.SetOwner(new NTAccount(Environment.UserDomainName, Environment.UserName));
+                key.SetAccessControl(rs);
+                key.Close();
+
+                // then add full control permission to Administrators
+                key = Registry.LocalMachine.OpenSubKey(TimeBombRegistryKeyName, RegistryKeyPermissionCheck.ReadWriteSubTree, RegistryRights.ChangePermissions);
+                rs = key.GetAccessControl();
                 rs.AddAccessRule(AdminWritableRegistryAccessRule);
                 key.SetAccessControl(rs);
                 key.Close();
@@ -155,8 +177,17 @@ namespace TSTool
         {
             using (new PrivilegeEnabler(Process.GetCurrentProcess(), Privilege.TakeOwnership))
             {
-                var key = Registry.LocalMachine.OpenSubKey(TimeBombRegistryKeyName, RegistryKeyPermissionCheck.ReadWriteSubTree, RegistryRights.TakeOwnership);
-                key.SetAccessControl(previousACL);
+                // Privileges.SetPrivilege("SeBackupPrivilege");
+                Privileges.SetPrivilege("SeRestorePrivilege");
+
+                var key = Registry.LocalMachine.OpenSubKey(TimeBombRegistryKeyName, RegistryKeyPermissionCheck.ReadWriteSubTree, RegistryRights.ChangePermissions | RegistryRights.TakeOwnership);
+                var rs = key.GetAccessControl();
+                // the original owner is "NETWORK SERVICE" but I can't set owner to that
+                rs.SetOwner(new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null));
+                // rs.RemoveAccessRule(NwSvcWritableRegistryAccessRule);
+                // rs.RemoveAccessRule(AdminWritableRegistryAccessRule);
+                // rs.AddAccessRule(NwSvcReadonlyRegistryAccessRule);
+                key.SetAccessControl(rs);
                 key.Close();
             }
         }
