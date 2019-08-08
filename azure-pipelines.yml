@@ -1,0 +1,49 @@
+
+name: $(Build.SourceBranchName)-$(Date:yyyyMMdd).$(Rev:r)
+variables:
+  solution: '**/*.sln'
+  buildPlatform: 'Any CPU'
+  buildConfiguration: 'Release'
+
+trigger:
+  batch: true
+  branches:
+    include: [ "*" ]
+  paths:
+    exclude: [ 
+      "README.md",
+      ".vs",
+      ".vscode",
+      ".git*",
+      "config.toml"
+    ]
+
+jobs:
+  - job: build
+    displayName: "build"
+    pool:
+      vmImage: 'windows-latest'
+    workspace:
+      clean: all
+    timeoutInMinutes: 120
+    steps:
+    - task: NuGetToolInstaller@1
+      displayName: 'Install NuGet'
+
+    - task: NuGetCommand@2
+      displayName: 'Restore packages'
+      inputs:
+        restoreSolution: '$(solution)'
+
+    - task: VSBuild@1
+      displayName: 'Build solution'
+      inputs:
+        solution: '$(solution)'
+        platform: '$(buildPlatform)'
+        configuration: '$(buildConfiguration)'
+
+    - task: VSTest@2
+      displayName: 'Run tests'
+      inputs:
+        platform: '$(buildPlatform)'
+        configuration: '$(buildConfiguration)'
