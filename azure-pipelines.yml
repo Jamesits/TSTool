@@ -20,7 +20,6 @@ trigger:
       ".vs",
       ".vscode",
       ".git*",
-      "config.toml"
     ]
 pr:
   branches:
