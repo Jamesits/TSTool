@@ -74,7 +74,7 @@ jobs:
       continueOnError: true
 
     - task: CopyFiles@2
-      displayName: 'Copy Files to: $(build.artifactstagingdirectory)'
+      displayName: 'Copy files for publishing'
       inputs:
         SourceFolder: '$(system.defaultworkingdirectory)'
         Contents: '**\bin\$(BuildConfiguration)\**'
@@ -83,4 +83,8 @@ jobs:
     - task: PublishBuildArtifacts@1
       displayName: 'Publish Artifact: drop'
       inputs:
+        artifactName: 'drop'
+        publishLocation: 'Container'
+        parallel: true
         PathtoPublish: '$(build.artifactstagingdirectory)'
+
