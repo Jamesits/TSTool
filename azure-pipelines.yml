@@ -53,18 +53,18 @@ jobs:
     - task: VSTest@2
       displayName: 'Run tests'
       inputs:
-      testSelector: 'testAssemblies'
-      testAssemblyVer2: |
-        **\*test*.dll
-        !**\*TestAdapter.dll
-        !**\obj\** 
-      platform: '$(buildPlatform)'
-      configuration: '$(buildConfiguration)'
-      runInParallel: true
-      codeCoverageEnabled: true
-      diagnosticsEnabled: True
-      rerunFailedTests: false
-      continueOnError: true
+        testSelector: 'testAssemblies'
+        testAssemblyVer2: |
+          **\*test*.dll
+          !**\*TestAdapter.dll
+          !**\obj\** 
+        platform: '$(buildPlatform)'
+        configuration: '$(buildConfiguration)'
+        runInParallel: true
+        codeCoverageEnabled: true
+        diagnosticsEnabled: True
+        rerunFailedTests: false
+        continueOnError: true
 
     - task: PublishSymbols@2
       displayName: 'Publish symbols path'
