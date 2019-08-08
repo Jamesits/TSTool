@@ -1,6 +1,8 @@
 # TSTool
 
-A tool to manipulate grace period of Terminal Services.
+A tool to manipulate the grace period of Terminal Services.
+
+[![Build Status](https://dev.azure.com/nekomimiswitch/General/_apis/build/status/TSTool?branchName=master)](https://dev.azure.com/nekomimiswitch/General/_build/latest?definitionId=57&branchName=master)
 
 ## Compatibility
 
