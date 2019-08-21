@@ -6,7 +6,6 @@ using System.Security.AccessControl;
 using Microsoft.Win32;
 using System.Security.Cryptography;
 using System.Security.Principal;
-using ProcessPrivileges;
 
 namespace TSTool
 {
@@ -149,25 +148,21 @@ namespace TSTool
             RegistryKey key;
             RegistrySecurity rs;
 
-            Process process = Process.GetCurrentProcess();
-            using (new PrivilegeEnabler(process, new[]{ Privilege.TakeOwnership}))
-            {
-                Console.WriteLine("{0} => {1}", Privilege.TakeOwnership, process.GetPrivilegeState(Privilege.TakeOwnership));
+            Privileges.SetPrivilege("SeTakeOwnership");
 
-                // first set owner to our own account
-                key = Registry.LocalMachine.OpenSubKey(TimeBombRegistryKeyName, RegistryKeyPermissionCheck.ReadWriteSubTree, RegistryRights.TakeOwnership);
-                rs = key.GetAccessControl();
-                rs.SetOwner(new NTAccount(Environment.UserDomainName, Environment.UserName));
-                key.SetAccessControl(rs);
-                key.Close();
+            // first set owner to our own account
+            key = Registry.LocalMachine.OpenSubKey(TimeBombRegistryKeyName, RegistryKeyPermissionCheck.ReadWriteSubTree, RegistryRights.TakeOwnership);
+            rs = key.GetAccessControl();
+            rs.SetOwner(new NTAccount(Environment.UserDomainName, Environment.UserName));
+            key.SetAccessControl(rs);
+            key.Close();
 
-                // then add full control permission to Administrators
-                key = Registry.LocalMachine.OpenSubKey(TimeBombRegistryKeyName, RegistryKeyPermissionCheck.ReadWriteSubTree, RegistryRights.ChangePermissions);
-                rs = key.GetAccessControl();
-                rs.AddAccessRule(AdminWritableRegistryAccessRule);
-                key.SetAccessControl(rs);
-                key.Close();
-            }
+            // then add full control permission to Administrators
+            key = Registry.LocalMachine.OpenSubKey(TimeBombRegistryKeyName, RegistryKeyPermissionCheck.ReadWriteSubTree, RegistryRights.ChangePermissions);
+            rs = key.GetAccessControl();
+            rs.AddAccessRule(AdminWritableRegistryAccessRule);
+            key.SetAccessControl(rs);
+            key.Close();
         }
 
         /// <summary>
@@ -175,21 +170,19 @@ namespace TSTool
         /// </summary>
         public static void ResetGracePeriodRegistryKeyPermission()
         {
-            using (new PrivilegeEnabler(Process.GetCurrentProcess(), Privilege.TakeOwnership))
-            {
-                // Privileges.SetPrivilege("SeBackupPrivilege");
-                Privileges.SetPrivilege("SeRestorePrivilege");
+            // Privileges.SetPrivilege("SeBackupPrivilege");
+            Privileges.SetPrivilege("SeTakeOwnership");
+            Privileges.SetPrivilege("SeRestorePrivilege");
 
-                var key = Registry.LocalMachine.OpenSubKey(TimeBombRegistryKeyName, RegistryKeyPermissionCheck.ReadWriteSubTree, RegistryRights.ChangePermissions | RegistryRights.TakeOwnership);
-                var rs = key.GetAccessControl();
-                // the original owner is "NETWORK SERVICE" but I can't set owner to that
-                rs.SetOwner(new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null));
-                // rs.RemoveAccessRule(NwSvcWritableRegistryAccessRule);
-                // rs.RemoveAccessRule(AdminWritableRegistryAccessRule);
-                // rs.AddAccessRule(NwSvcReadonlyRegistryAccessRule);
-                key.SetAccessControl(rs);
-                key.Close();
-            }
+            var key = Registry.LocalMachine.OpenSubKey(TimeBombRegistryKeyName, RegistryKeyPermissionCheck.ReadWriteSubTree, RegistryRights.ChangePermissions | RegistryRights.TakeOwnership);
+            var rs = key.GetAccessControl();
+            // the original owner is "NETWORK SERVICE" but I can't set owner to that
+            rs.SetOwner(new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null));
+            // rs.RemoveAccessRule(NwSvcWritableRegistryAccessRule);
+            // rs.RemoveAccessRule(AdminWritableRegistryAccessRule);
+            // rs.AddAccessRule(NwSvcReadonlyRegistryAccessRule);
+            key.SetAccessControl(rs);
+            key.Close();
         }
 
         /// <summary>

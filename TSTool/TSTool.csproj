@@ -76,12 +76,6 @@
     <None Include="app.manifest" />
     <None Include="packages.config" />
   </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\ProcessPrivileges\ProcessPrivileges.csproj">
-      <Project>{410caee5-d287-4a18-9b38-bb87397d218d}</Project>
-      <Name>ProcessPrivileges</Name>
-    </ProjectReference>
-  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
