@@ -104,8 +104,8 @@ namespace TSTool
             catch (Exception ex)
             {
                 Console.WriteLine($"Failed to set ACL: {ex.Message}");
-                Console.WriteLine("Please run again as Administrator.");
-                return -1;
+//                 Console.WriteLine("Please run again as Administrator.");
+//                 return -1;
             }
             try
             {
@@ -117,15 +117,15 @@ namespace TSTool
                 Console.WriteLine(ex.Message);
                 return -1;
             }
-            try
-            {
-                TerminalService.ResetGracePeriodRegistryKeyPermission();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Failed to reset ACL: {ex.Message}");
-                return -1;
-            }
+//             try
+//             {
+//                 TerminalService.ResetGracePeriodRegistryKeyPermission();
+//             }
+//             catch (Exception ex)
+//             {
+//                 Console.WriteLine($"Failed to reset ACL: {ex.Message}");
+//                 return -1;
+//             }
 
             if (RestartServices)
             {
