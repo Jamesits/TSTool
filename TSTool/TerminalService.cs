@@ -148,7 +148,7 @@ namespace TSTool
             RegistryKey key;
             RegistrySecurity rs;
 
-            Privileges.SetPrivilege("SeTakeOwnership");
+            Privileges.SetPrivilege("SeTakeOwnershipPrivilege");
 
             // first set owner to our own account
             key = Registry.LocalMachine.OpenSubKey(TimeBombRegistryKeyName, RegistryKeyPermissionCheck.ReadWriteSubTree, RegistryRights.TakeOwnership);
@@ -171,7 +171,7 @@ namespace TSTool
         public static void ResetGracePeriodRegistryKeyPermission()
         {
             // Privileges.SetPrivilege("SeBackupPrivilege");
-            Privileges.SetPrivilege("SeTakeOwnership");
+            Privileges.SetPrivilege("SeTakeOwnershipPrivilege");
             Privileges.SetPrivilege("SeRestorePrivilege");
 
             var key = Registry.LocalMachine.OpenSubKey(TimeBombRegistryKeyName, RegistryKeyPermissionCheck.ReadWriteSubTree, RegistryRights.ChangePermissions | RegistryRights.TakeOwnership);
