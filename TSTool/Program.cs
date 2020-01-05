@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using System.Security.AccessControl;
 using McMaster.Extensions.CommandLineUtils;
 
 namespace TSTool
@@ -96,41 +97,23 @@ namespace TSTool
 
         protected override int OnExecute(CommandLineApplication app)
         {
-            if (Days == null) Days = 114515;
+            if (!Utils.HasAdmin()) Console.WriteLine("Please run this command as Administrator or it might fail!");
             try
             {
-                TerminalService.SetGracePeriodRegistryKeyPermission();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Failed to set ACL: {ex.Message}");
-//                 Console.WriteLine("Please run again as Administrator.");
-//                 return -1;
-            }
-            try
-            {
-                TerminalService.SetGracePeriodVal((long) Days);
-                Console.WriteLine($"Successfully set grace period to {Days} days later");
+                RegistrySecurity oldrs = null;
+                if (Days == null) Days = 114515;
+                oldrs = TerminalService.SetGracePeriodRegistryKeyPermission();
+                TerminalService.SetGracePeriodVal((long)Days);
+                Console.WriteLine($"Grace period set to {Days} days");
+                if (oldrs != null) TerminalService.SetGracePeriodRegistryKeyPermission(oldrs);
+                if (RestartServices) TerminalService.RestartServices();
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
                 return -1;
             }
-//             try
-//             {
-//                 TerminalService.ResetGracePeriodRegistryKeyPermission();
-//             }
-//             catch (Exception ex)
-//             {
-//                 Console.WriteLine($"Failed to reset ACL: {ex.Message}");
-//                 return -1;
-//             }
 
-            if (RestartServices)
-            {
-                TerminalService.RestartServices();
-            }
             return 0;
         }
 
@@ -152,40 +135,22 @@ namespace TSTool
 
         protected override int OnExecute(CommandLineApplication app)
         {
+            if (!Utils.HasAdmin()) Console.WriteLine("Please run this command as Administrator or it might fail!");
             try
             {
-                TerminalService.SetGracePeriodRegistryKeyPermission();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Failed to set ACL: {ex.Message}");
-                Console.WriteLine("Please run again as Administrator.");
-                return -1;
-            }
-            try
-            {
+                RegistrySecurity oldrs = null;
+                oldrs = TerminalService.SetGracePeriodRegistryKeyPermission();
                 TerminalService.ResetGracePeriodVal();
-                Console.WriteLine($"Successfully reset grace period");
-            }
-            catch (Exception ex)
+                Console.WriteLine($"Grace period is reset");
+                if (oldrs != null) TerminalService.SetGracePeriodRegistryKeyPermission(oldrs);
+                if (RestartServices) TerminalService.RestartServices();
+
+            } catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
                 return -1;
             }
-            try
-            {
-                TerminalService.ResetGracePeriodRegistryKeyPermission();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Failed to reset ACL: {ex.Message}");
-                return -1;
-            }
 
-            if (RestartServices)
-            {
-                TerminalService.RestartServices();
-            }
             return 0;
         }
 
@@ -207,6 +172,7 @@ namespace TSTool
 
         protected override int OnExecute(CommandLineApplication app)
         {
+            if (!Utils.HasAdmin()) Console.WriteLine("Please run this command as Administrator or it might fail!");
             try
             {
                 TerminalService.RestartServices();

@@ -11,15 +11,17 @@ namespace TSTool
 {
     public static class TerminalService
     {
-        private const string TimeBombRegistryKeyName = "System\\CurrentControlSet\\Control\\Terminal Server\\RCM\\GracePeriod";
-        private const string TimeBombRegistryValueNameGA = "L$RTMTIMEBOMB_1320153D-8DA3-4e8e-B27B-0D888223A588";
+        private const string TimeBombRegistryKeyName = @"System\CurrentControlSet\Control\Terminal Server\RCM\GracePeriod";
+        private const string TimeBombRegistryValueNameGa = "L$RTMTIMEBOMB_1320153D-8DA3-4e8e-B27B-0D888223A588";
         private const string TimeBombRegistryValueNameBeta = "L$GracePeriodTimeBomb_1320153D-8DA3-4e8e-B27B-0D888223A588";
 
-        private const string TermServLicensingKeyName = "SOFTWARE\\Microsoft\\TermServLicensing";
-        private const string TermServLicensingValueName = "RunAsRTM";
+        private const string TermServiceLicensingKeyName = @"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\TermServLicensing";
+        private const string TermServiceLicensingValueName = "RunAsRTM";
+
+        private const string TerminalServicesWimScope = @"root\CIMV2\TerminalServices";
 
         private static string TimeBombRegistryValueName =>
-            TLSIsBetaNTServer() ? TimeBombRegistryValueNameBeta : TimeBombRegistryValueNameGA;
+            TLSIsBetaNTServer() ? TimeBombRegistryValueNameBeta : TimeBombRegistryValueNameGa;
 
         // ReSharper disable once InconsistentNaming
         /// <summary>
@@ -28,23 +30,23 @@ namespace TSTool
         /// <returns></returns>
         public static bool TLSIsBetaNTServer()
         {
-            int RunAsRtm =
-                Convert.ToInt32(Registry.GetValue("HKEY_LOCAL_MACHINE\\" + TermServLicensingKeyName, TermServLicensingValueName, -1));
-            Debug.Print($"TLSIsBetaNTServer got {RunAsRtm}");
-            return RunAsRtm == 4;
+            var runAsRtm =
+                Convert.ToInt32(Registry.GetValue(TermServiceLicensingKeyName, TermServiceLicensingValueName, -1));
+            Debug.Print($"TLSIsBetaNTServer got {runAsRtm}");
+            return runAsRtm == 4;
         }
 
-        public static int GetGracePeriod(out long GracePeriodDays)
+        public static int GetGracePeriod(out long gracePeriodDays)
         {
-            GracePeriodDays = 0;
+            gracePeriodDays = 0;
             string path = null;
             try
             {
-                var searcher = new ManagementObjectSearcher("root\\CIMV2\\TerminalServices", "SELECT * FROM Win32_TerminalServiceSetting");
+                var searcher = new ManagementObjectSearcher(TerminalServicesWimScope, "SELECT * FROM Win32_TerminalServiceSetting");
 
                 foreach (var o in searcher.Get())
                 {
-                    var queryObj = (ManagementObject) o;
+                    var queryObj = (ManagementObject)o;
                     path = queryObj["__PATH"].ToString().Split(":".ToCharArray(), 2)[1];
                     break;
                 }
@@ -57,10 +59,11 @@ namespace TSTool
 
             try
             {
-                var classInstance = new ManagementObject("root\\CIMV2\\TerminalServices", path, null);
+                var classInstance = new ManagementObject(TerminalServicesWimScope, path, null);
                 var outParams = classInstance.InvokeMethod("GetGracePeriodDays", null, null);
+                Debug.Assert(outParams != null, nameof(outParams) + " != null");
 
-                GracePeriodDays = Convert.ToInt64(outParams["DaysLeft"]);
+                gracePeriodDays = Convert.ToInt64(outParams["DaysLeft"]);
                 return Convert.ToInt32(outParams["ReturnValue"]);
             }
             catch (ManagementException err)
@@ -78,7 +81,8 @@ namespace TSTool
         /// <returns>a FILETIME object (Int64)</returns>
         public static byte[] GetGracePeriodValRaw()
         {
-            var value = (byte[])Registry.GetValue("HKEY_LOCAL_MACHINE\\" + TimeBombRegistryKeyName, TimeBombRegistryValueName, null);
+            var key = Registry.LocalMachine.OpenSubKey(TimeBombRegistryKeyName, RegistryRights.ReadKey);
+            var value = (byte[])key.GetValue(TimeBombRegistryValueName, null);
             var ret = ProtectedData.Unprotect(value, null, DataProtectionScope.LocalMachine);
             Debug.Print($"GetGracePeriodVal returned raw data: {Utils.ByteArrayToString(ret)}");
             if (ret.Length > 8)
@@ -96,7 +100,10 @@ namespace TSTool
         public static void SetGracePeriodVal(byte[] data)
         {
             var p = ProtectedData.Protect(data, null, DataProtectionScope.LocalMachine);
-            Registry.SetValue("HKEY_LOCAL_MACHINE\\" + TimeBombRegistryKeyName, TimeBombRegistryValueName, p);
+            using (var key = Registry.LocalMachine.OpenSubKey(TimeBombRegistryKeyName, true))
+            {
+                key?.SetValue(TimeBombRegistryValueName, p, RegistryValueKind.Binary);
+            }
         }
 
         /// <summary>
@@ -117,70 +124,70 @@ namespace TSTool
             }
         }
 
-        private static readonly RegistryAccessRule AdminWritableRegistryAccessRule = new RegistryAccessRule(
-            new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null), 
-            //Environment.UserDomainName + "\\" + Environment.UserName,
-            // "Administrators",
-            RegistryRights.FullControl,
-            InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit,
-            PropagationFlags.None,
-            AccessControlType.Allow);
-
-        private static readonly RegistryAccessRule NwSvcWritableRegistryAccessRule = new RegistryAccessRule(
-            new SecurityIdentifier(WellKnownSidType.NetworkServiceSid, null),
-            RegistryRights.FullControl,
-            InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit,
-            PropagationFlags.None,
-            AccessControlType.Allow);
-
-        private static readonly RegistryAccessRule NwSvcReadonlyRegistryAccessRule = new RegistryAccessRule(
-            new SecurityIdentifier(WellKnownSidType.NetworkServiceSid, null),
-            RegistryRights.ReadKey | RegistryRights.ReadPermissions | RegistryRights.EnumerateSubKeys | RegistryRights.QueryValues | RegistryRights.Notify,
-            InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit,
-            PropagationFlags.None,
-            AccessControlType.Allow);
-
         /// <summary>
         /// Bypass ACL by allowing Administrator to write to the key
+        /// Returns the old ACL
         /// </summary>
-        public static void SetGracePeriodRegistryKeyPermission()
+        public static RegistrySecurity SetGracePeriodRegistryKeyPermission()
         {
-            RegistryKey key;
-            RegistrySecurity rs;
-
             Privileges.SetPrivilege("SeTakeOwnershipPrivilege");
+            Privileges.SetPrivilege("SeBackupPrivilege");
+            Privileges.SetPrivilege("SeRestorePrivilege");
 
-            // first set owner to our own account
-            key = Registry.LocalMachine.OpenSubKey(TimeBombRegistryKeyName, RegistryKeyPermissionCheck.ReadWriteSubTree, RegistryRights.TakeOwnership);
-            rs = key.GetAccessControl();
-            rs.SetOwner(new NTAccount(Environment.UserDomainName, Environment.UserName));
-            key.SetAccessControl(rs);
-            key.Close();
+            var sid = new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null);
+            var account = sid.Translate(typeof(NTAccount)) as NTAccount;
 
-            // then add full control permission to Administrators
-            key = Registry.LocalMachine.OpenSubKey(TimeBombRegistryKeyName, RegistryKeyPermissionCheck.ReadWriteSubTree, RegistryRights.ChangePermissions);
-            rs = key.GetAccessControl();
-            rs.AddAccessRule(AdminWritableRegistryAccessRule);
-            key.SetAccessControl(rs);
-            key.Close();
+            RegistrySecurity oldRs;
+
+            // compatibility hell(?)
+            // https://docs.microsoft.com/en-us/windows/win32/winprog64/registry-redirector?redirectedfrom=MSDN
+            // https://stackoverflow.com/questions/2464358/why-is-opensubkey-returning-null-on-my-windows-7-64-bit-system/16698274
+            // var registryLocalMachine = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64);
+            var registryLocalMachine = Registry.LocalMachine;
+
+            // first, back up old ACL
+            using (RegistryKey rk = registryLocalMachine.OpenSubKey(TimeBombRegistryKeyName, false))
+            {
+                oldRs = rk?.GetAccessControl(AccessControlSections.All);
+            }
+
+            // then get owner
+            using (RegistryKey rk = registryLocalMachine.OpenSubKey(TimeBombRegistryKeyName, RegistryKeyPermissionCheck.ReadWriteSubTree, RegistryRights.TakeOwnership))
+            {
+                RegistrySecurity rs = rk?.GetAccessControl(AccessControlSections.All);
+                rs?.SetOwner(account ?? throw new InvalidOperationException());
+                rk?.SetAccessControl(rs ?? throw new InvalidOperationException());
+            }
+
+            using (RegistryKey rk = registryLocalMachine.OpenSubKey(TimeBombRegistryKeyName, RegistryKeyPermissionCheck.ReadWriteSubTree, RegistryRights.ChangePermissions))
+            {
+                RegistrySecurity rs = rk?.GetAccessControl(AccessControlSections.All);
+                Debug.Assert(account != null, nameof(account) + " != null");
+                RegistryAccessRule rar = new RegistryAccessRule(
+                    account.ToString(),
+                    RegistryRights.FullControl,
+                    InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit,
+                    PropagationFlags.None,
+                    AccessControlType.Allow);
+
+                rs?.AddAccessRule(rar);
+                rk?.SetAccessControl(rs ?? throw new InvalidOperationException());
+            }
+
+            return oldRs;
         }
 
         /// <summary>
         /// Reset ACL
         /// </summary>
-        public static void ResetGracePeriodRegistryKeyPermission()
+        public static void SetGracePeriodRegistryKeyPermission(RegistrySecurity rs)
         {
-            // Privileges.SetPrivilege("SeBackupPrivilege");
             Privileges.SetPrivilege("SeTakeOwnershipPrivilege");
+            Privileges.SetPrivilege("SeBackupPrivilege");
             Privileges.SetPrivilege("SeRestorePrivilege");
 
             var key = Registry.LocalMachine.OpenSubKey(TimeBombRegistryKeyName, RegistryKeyPermissionCheck.ReadWriteSubTree, RegistryRights.ChangePermissions | RegistryRights.TakeOwnership);
-            var rs = key.GetAccessControl();
-            // the original owner is "NETWORK SERVICE" but I can't set owner to that
-            rs.SetOwner(new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null));
-            // rs.RemoveAccessRule(NwSvcWritableRegistryAccessRule);
-            // rs.RemoveAccessRule(AdminWritableRegistryAccessRule);
-            // rs.AddAccessRule(NwSvcReadonlyRegistryAccessRule);
+            if (key == null) return; // FIXME: should throw exception here
             key.SetAccessControl(rs);
             key.Close();
         }
